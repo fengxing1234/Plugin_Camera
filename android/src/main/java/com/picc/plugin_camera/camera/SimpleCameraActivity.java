@@ -1,8 +1,13 @@
 package com.picc.plugin_camera.camera;
 
+import android.Manifest;
 import android.app.Activity;
-import android.hardware.Camera;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
@@ -15,6 +20,7 @@ import com.picc.plugin_camera.R;
 public class SimpleCameraActivity extends Activity {
 
     private static final String TAG = SimpleCameraActivity.class.getSimpleName();
+    private static final int PERMISSIONS_REQUEST_CODE_CAMERA = 0x10;
 
     private CameraOperationHelper mCameraHelper;
 
@@ -32,13 +38,9 @@ public class SimpleCameraActivity extends Activity {
         CameraPreview preview = new CameraPreview(this);
         FrameLayout previewContainer = (FrameLayout) findViewById(R.id.camera_preview);
         previewContainer.addView(preview);
-
         mCameraHelper = CameraOperationHelper.getInstance(this);
-        Camera camera = mCameraHelper.safeOpenCamera();
         mCameraHelper.setPreview(preview);
         new IOrientationEventListener(this);
-
-//        mCameraHelper.startPreview();
         Button captureButton = (Button) findViewById(R.id.button_capture);
         captureButton.setOnClickListener(
                 new View.OnClickListener() {
@@ -72,8 +74,9 @@ public class SimpleCameraActivity extends Activity {
     protected void onResume() {
         super.onResume();
         Log.d(TAG, "onResume: ");
-        mCameraHelper.safeOpenCamera();
-        mCameraHelper.startPreview();
+        if (checkPermission()) {
+            initCamera();
+        }
     }
 
     @Override
@@ -89,6 +92,76 @@ public class SimpleCameraActivity extends Activity {
         Log.d(TAG, "onDestroy: ");
         mCameraHelper.releaseCamera();
         mCameraHelper = null;
+    }
+
+    private String[] permissions = new String[]{Manifest.permission.CAMERA, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+
+    private boolean checkPermission() {
+        //是否需要校验
+        boolean checkNeed = false;
+        for (int i = 0; i < permissions.length; i++) {
+            boolean b = ContextCompat.checkSelfPermission(this, permissions[i]) != PackageManager.PERMISSION_GRANTED;
+            Log.d(TAG, "b : " + b);
+            checkNeed = checkNeed | b;
+            Log.d(TAG, "checkPermission: " + checkNeed);
+        }
+        if (checkNeed) {
+            // Should we show an explanation?
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.CAMERA)) {
+
+                // Show an expanation to the user *asynchronously* -- don't block
+                // this thread waiting for the user's response! After the user
+                // sees the explanation, try again to request the permission.
+                new AlertDialog.Builder(this).setTitle("应用需要摄像头权限才能拍摄照片").setPositiveButton("确认", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        ActivityCompat.requestPermissions(SimpleCameraActivity.this,
+                                permissions,
+                                PERMISSIONS_REQUEST_CODE_CAMERA);
+                    }
+                }).setNegativeButton("离开", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        finish();
+                    }
+                }).setCancelable(false).show();
+
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        permissions,
+                        PERMISSIONS_REQUEST_CODE_CAMERA);
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case PERMISSIONS_REQUEST_CODE_CAMERA: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    initCamera();
+                } else {
+                    new AlertDialog.Builder(this).setTitle("无法打开摄像头!").setPositiveButton("确定", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            finish();
+                        }
+                    }).show();
+                }
+            }
+        }
+    }
+
+    private void initCamera() {
+        mCameraHelper.safeOpenCamera();
+        mCameraHelper.startPreview();
     }
 
 }
