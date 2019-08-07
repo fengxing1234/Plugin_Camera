@@ -32,6 +32,10 @@ public class CameraOperationHelper {
     private Camera mCamera;
     private CameraPreview mPreview;
     private boolean safeToTakePicture = false;
+    protected int CAMERA_ID_FRONT;
+    protected int CAMERA_ID_BACK;
+    private int mCurrentCameraId;
+    private boolean mCameraReady;
 
 
     private CameraOperationHelper(Context context) {
@@ -56,6 +60,9 @@ public class CameraOperationHelper {
         }
     };
 
+    /**
+     *
+     */
     private Camera.ShutterCallback mShutterCallback = new Camera.ShutterCallback() {
         @Override
         public void onShutter() {
@@ -96,7 +103,24 @@ public class CameraOperationHelper {
         }
     };
 
+    /**
+     * 切换相机 和 第一次创建相机 会调用 标示已经准备好了 可以拍了
+     */
+    private Camera.PreviewCallback mOneShotPreviewCallback = new Camera.PreviewCallback() {
+        @Override
+        public void onPreviewFrame(byte[] data, Camera camera) {
+            Log.d(TAG, "onPreviewFrame: ");
+            mCameraReady = true;
+        }
+    };
 
+
+    /**
+     * 图片保存路径
+     *
+     * @param mediaTypeImage
+     * @return
+     */
     private File getOutputMediaFile(int mediaTypeImage) {
         File images = mContext.getExternalFilesDir("images");
         return new File(images, System.currentTimeMillis() + ".png");
@@ -107,11 +131,13 @@ public class CameraOperationHelper {
      */
     public Camera safeOpenCamera() {
         try {
+            initAvailableCameraId();
             boolean hasCamera = mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA);
             Log.d(TAG, "是否有相机资源: " + hasCamera);
             //获取camera实例。attempt to get a Camera instance
             if (hasCamera) {
-                mCamera = Camera.open(0);
+                mCamera = Camera.open(mCurrentCameraId);
+                mCamera.setOneShotPreviewCallback(mOneShotPreviewCallback);
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -178,7 +204,7 @@ public class CameraOperationHelper {
 
     public void takePicture() {
         try {
-            if (safeToTakePicture) {
+            if (safeToTakePicture && mCameraReady) {
                 mCamera.takePicture(mShutterCallback, mPictureRow, mPictureCallback);
                 safeToTakePicture = false;
             }
@@ -192,9 +218,49 @@ public class CameraOperationHelper {
 
     }
 
-    public void doSwitchCamera() {
+    /**
+     * 找出前置摄像头和后置摄像头对应的 id，
+     * -1 表示不支持该摄像头
+     */
+    private void initAvailableCameraId() {
+        CAMERA_ID_BACK = -1;
+        CAMERA_ID_FRONT = -1;
+        Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
+        int cameraCount = Camera.getNumberOfCameras();
+        for (int i = 0; i < cameraCount; i++) {
+            Camera.getCameraInfo(i, cameraInfo);
 
+            if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
+                CAMERA_ID_BACK = i;
+            }
+
+            if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+                CAMERA_ID_FRONT = i;
+            }
+        }
+        Log.d(TAG, "CAMERA_ID_BACK: " + CAMERA_ID_BACK + "::: CAMERA_ID_FRONT : " + CAMERA_ID_FRONT);
     }
+
+    /**
+     * 切换前后摄像头
+     */
+    public void doSwitchCamera() {
+        if (!mCameraReady) {
+            return;
+        }
+        mCameraReady = false;
+        if (mCurrentCameraId == CAMERA_ID_BACK) {
+            mCurrentCameraId = CAMERA_ID_FRONT;
+        } else {
+            mCurrentCameraId = CAMERA_ID_BACK;
+        }
+
+        Log.d(TAG, "doSwitchCamera: " + mCurrentCameraId);
+        releaseCamera();
+        safeOpenCamera();
+        startPreview();
+    }
+
 
     public void doSwitchFlush() {
 
