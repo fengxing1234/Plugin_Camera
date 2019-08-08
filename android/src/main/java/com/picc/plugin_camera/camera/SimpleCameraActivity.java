@@ -9,6 +9,7 @@ import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
@@ -23,6 +24,7 @@ public class SimpleCameraActivity extends Activity {
     private static final int PERMISSIONS_REQUEST_CODE_CAMERA = 0x10;
 
     private CameraOperationHelper mCameraHelper;
+    private FocusCameraView focusView;
 
 
     @Override
@@ -37,6 +39,7 @@ public class SimpleCameraActivity extends Activity {
 
         CameraPreview preview = new CameraPreview(this);
         FrameLayout previewContainer = (FrameLayout) findViewById(R.id.camera_preview);
+        focusView = (FocusCameraView) findViewById(R.id.over_camera_view);
         previewContainer.addView(preview);
         mCameraHelper = CameraOperationHelper.getInstance(this);
         mCameraHelper.setPreview(preview);
@@ -68,6 +71,16 @@ public class SimpleCameraActivity extends Activity {
                 mCameraHelper.doSwitchFlush();
             }
         });
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        switch (event.getAction()) {
+            case MotionEvent.ACTION_DOWN:
+                mCameraHelper.touchFocus(focusView, event.getX(), event.getY());
+                break;
+        }
+        return super.onTouchEvent(event);
     }
 
     @Override

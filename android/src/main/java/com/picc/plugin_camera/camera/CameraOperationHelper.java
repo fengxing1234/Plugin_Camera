@@ -154,54 +154,6 @@ public class CameraOperationHelper {
 
     }
 
-    private int faceBackCameraId;
-    private int faceBackCameraOrientation;
-
-    private int faceFrontCameraId;
-    private int faceFrontCameraOrientation;
-
-    private void getCameraInfo() {
-        int numberOfCameras = Camera.getNumberOfCameras();
-        for (int i = 0; i < numberOfCameras; i++) {
-            Camera.CameraInfo cameraInfo = new Camera.CameraInfo();
-            Camera.getCameraInfo(i, cameraInfo);
-            //后置摄像头
-            if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_BACK) {
-                faceBackCameraId = i;
-                faceBackCameraOrientation = cameraInfo.orientation;
-            } else if (cameraInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {//前置摄像头
-                faceFrontCameraId = i;
-                faceFrontCameraOrientation = cameraInfo.orientation;
-            }
-        }
-    }
-
-    private void getCameraParameters(Camera camera) {
-        Camera.Parameters parameters = camera.getParameters();
-        //Camera.Parameters.FLASH_MODE_AUTO 自动模式，当光线较暗时自动打开闪光灯；
-        //Camera.Parameters.FLASH_MODE_OFF 关闭闪光灯；
-        //Camera.Parameters.FLASH_MODE_ON 拍照时闪光灯；
-        //Camera.Parameters.FLASH_MODE_RED_EYE 闪光灯参数，防红眼模式。
-        String flashMode = parameters.getFlashMode();
-        Log.d(TAG, "flashMode: " + flashMode);
-        //Camera.Parameters.FOCUS_MODE_AUTO 自动对焦模式，摄影小白专用模式；
-        //Camera.Parameters.FOCUS_MODE_FIXED 固定焦距模式，拍摄老司机模式；
-        //Camera.Parameters.FOCUS_MODE_EDOF 景深模式，文艺女青年最喜欢的模式；
-        //Camera.Parameters.FOCUS_MODE_INFINITY 远景模式，拍风景大场面的模式；
-        //Camera.Parameters.FOCUS_MODE_MACRO 微焦模式，拍摄小花小草小蚂蚁专用模式；
-        String focusMode = parameters.getFocusMode();
-        Log.d(TAG, "focusMode: " + focusMode);
-        //Camera.Parameters.SCENE_MODE_BARCODE 扫描条码场景，NextQRCode项目会判断并设置为这个场景；
-        //Camera.Parameters.SCENE_MODE_ACTION 动作场景，就是抓拍跑得飞快的运动员、汽车等场景用的；
-        //Camera.Parameters.SCENE_MODE_AUTO 自动选择场景；
-        //Camera.Parameters.SCENE_MODE_HDR 高动态对比度场景，通常用于拍摄晚霞等明暗分明的照片；
-        //Camera.Parameters.SCENE_MODE_NIGHT 夜间场景；
-        String sceneMode = parameters.getSceneMode();
-        Log.d(TAG, "sceneMode: " + sceneMode);
-
-    }
-
-
     public void takePicture() {
         try {
             if (safeToTakePicture && mCameraReady) {
@@ -313,25 +265,13 @@ public class CameraOperationHelper {
         float h = picSize.height;
         mPreview.setLayoutParams(new FrameLayout.LayoutParams(1080, 1920));
         parameters.setJpegQuality(100); // 设置照片质量
-        if (parameters.getSupportedFocusModes().contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE)) {
-            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
+
+        if (parameters.getSupportedFocusModes().contains(Camera.Parameters.FOCUS_MODE_AUTO)) {
+            parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
         }
-        mCamera.cancelAutoFocus();//只有加上了这一句，才会自动对焦。
-        //mCamera.setDisplayOrientation(0);
+
+
         mCamera.setParameters(parameters);
-
-        // 连续对焦模式
-        //parameters.setFocusMode(Camera.Parameters.FOCUS_MODE_CONTINUOUS_PICTURE);
-        //自动聚焦模式
-        //Camera.Parameters.FOCUS_MODE_AUTO;
-        //无穷远
-        //Camera.Parameters.FOCUS_MODE_INFINITY;
-        //微距
-        //Camera.Parameters.FOCUS_MODE_MACRO;
-        //固定焦距
-        //Camera.Parameters.FOCUS_MODE_FIXED;
-
-
     }
 
     public Camera.Size getProperSize(List<Camera.Size> sizeList, float displayRatio) {
@@ -356,23 +296,11 @@ public class CameraOperationHelper {
         return result;
     }
 
-    public void orientationChanged(int orientation) {
-        Log.d(TAG, "orientationChanged: " + orientation);
-        Camera.CameraInfo info = new Camera.CameraInfo();
-        Camera.getCameraInfo(0, info);
-        orientation = (orientation + 45) / 90 * 90;
-        int rotation = 0;
-        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
-            rotation = (info.orientation - orientation + 360) % 360;
-        } else {
-            rotation = (info.orientation + orientation) % 360;
-        }
-        if (mCamera != null) {
-            Camera.Parameters parameters = mCamera.getParameters();
-            parameters.setRotation(rotation);
-            mCamera.setParameters(parameters);
-        }
+    public void touchFocus(FocusCameraView focusView, float x, float y) {
+        //checkUseFocus(x, y, focusView.getWidth(), focusView.getHeight());
+        focusView.setTouchFocusRect(mCamera, x, y);
     }
+
 
     static class SizeComparator implements Comparator<Camera.Size> {
         @Override
@@ -388,6 +316,31 @@ public class CameraOperationHelper {
             }
             return 0;
         }
+
+    }
+
+    private void getCameraParameters(Camera camera) {
+        Camera.Parameters parameters = camera.getParameters();
+        //Camera.Parameters.FLASH_MODE_AUTO 自动模式，当光线较暗时自动打开闪光灯；
+        //Camera.Parameters.FLASH_MODE_OFF 关闭闪光灯；
+        //Camera.Parameters.FLASH_MODE_ON 拍照时闪光灯；
+        //Camera.Parameters.FLASH_MODE_RED_EYE 闪光灯参数，防红眼模式。
+        String flashMode = parameters.getFlashMode();
+        Log.d(TAG, "flashMode: " + flashMode);
+        //Camera.Parameters.FOCUS_MODE_AUTO 自动对焦模式，摄影小白专用模式；
+        //Camera.Parameters.FOCUS_MODE_FIXED 固定焦距模式，拍摄老司机模式；
+        //Camera.Parameters.FOCUS_MODE_EDOF 景深模式，文艺女青年最喜欢的模式；
+        //Camera.Parameters.FOCUS_MODE_INFINITY 远景模式，拍风景大场面的模式；
+        //Camera.Parameters.FOCUS_MODE_MACRO 微焦模式，拍摄小花小草小蚂蚁专用模式；
+        String focusMode = parameters.getFocusMode();
+        Log.d(TAG, "focusMode: " + focusMode);
+        //Camera.Parameters.SCENE_MODE_BARCODE 扫描条码场景，NextQRCode项目会判断并设置为这个场景；
+        //Camera.Parameters.SCENE_MODE_ACTION 动作场景，就是抓拍跑得飞快的运动员、汽车等场景用的；
+        //Camera.Parameters.SCENE_MODE_AUTO 自动选择场景；
+        //Camera.Parameters.SCENE_MODE_HDR 高动态对比度场景，通常用于拍摄晚霞等明暗分明的照片；
+        //Camera.Parameters.SCENE_MODE_NIGHT 夜间场景；
+        String sceneMode = parameters.getSceneMode();
+        Log.d(TAG, "sceneMode: " + sceneMode);
 
     }
 }
