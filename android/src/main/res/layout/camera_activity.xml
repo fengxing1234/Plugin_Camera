@@ -41,7 +41,7 @@
         android:layout_alignParentBottom="true"
         android:layout_marginLeft="20dp"
         android:layout_marginBottom="40dp"
-        android:text="对焦方式" />
+        android:text="闪光灯" />
 
     <Button
         android:layout_width="wrap_content"

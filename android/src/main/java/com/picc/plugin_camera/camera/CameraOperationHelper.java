@@ -1,20 +1,19 @@
 package com.picc.plugin_camera.camera;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Point;
 import android.hardware.Camera;
 import android.util.Log;
 import android.widget.FrameLayout;
 
 import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import static android.provider.MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE;
+import static android.view.OrientationEventListener.ORIENTATION_UNKNOWN;
 
 /**
  * 相机操作功能类
@@ -79,21 +78,11 @@ public class CameraOperationHelper {
 
         @Override
         public void onPictureTaken(byte[] data, Camera camera) {
-
-            File pictureFile = getOutputMediaFile(MEDIA_TYPE_IMAGE);
-            if (pictureFile == null) {
-                Log.d(TAG, "Error creating media file, check storage permissions");
-                return;
-            }
-
             try {
-                FileOutputStream fos = new FileOutputStream(pictureFile);
-                fos.write(data);
-                fos.close();
-            } catch (FileNotFoundException e) {
-                Log.d(TAG, "File not found: " + e.getMessage());
-            } catch (IOException e) {
-                Log.d(TAG, "Error accessing file: " + e.getMessage());
+                PictureTask pictureTask = new PictureTask(imageWorkerContext);
+                pictureTask.execute(data);
+            } catch (Exception e) {
+                e.printStackTrace();
             } finally {
                 //连拍功能
                 mCamera.stopPreview();// 关闭预览
@@ -102,6 +91,44 @@ public class CameraOperationHelper {
             }
         }
     };
+
+    private ImageWorkerContext imageWorkerContext = new ImageWorkerContext() {
+        @Override
+        public boolean preCheck(byte[] data) {
+            return false;
+        }
+
+        @Override
+        public File[] createImageFile() {
+            return generateNewImageFile();
+        }
+
+        @Override
+        public void onFileSaved(File image, File thumb) {
+
+        }
+
+        @Override
+        public void onTaskComplete(String s) {
+
+        }
+
+        @Override
+        public void proExecute() {
+
+        }
+    };
+
+    /**
+     * 文件保存位置
+     *
+     * @return
+     */
+    private File[] generateNewImageFile() {
+        File images = mContext.getExternalFilesDir("images");
+        File file = new File(images, System.currentTimeMillis() + ".png");
+        return new File[]{file};
+    }
 
     /**
      * 切换相机 和 第一次创建相机 会调用 标示已经准备好了 可以拍了
@@ -215,7 +242,42 @@ public class CameraOperationHelper {
 
 
     public void doSwitchFlush() {
+        boolean on = false;
+        if (mCamera != null) {
+            Camera.Parameters parameters = mCamera.getParameters();
+            String flashMode = parameters.getFlashMode();
+            on = !flashMode.equals(Camera.Parameters.FLASH_MODE_ON);
+        }
+        if (!on) {
+            turnOnFlash();
+        } else {
+            turnOffFlash();
+        }
 
+    }
+
+    public void turnOnFlash() {
+        if (mCamera != null) {
+            try {
+                Camera.Parameters parameters = mCamera.getParameters();
+                parameters.setFlashMode(Camera.Parameters.FLASH_MODE_ON);
+                mCamera.setParameters(parameters);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public void turnOffFlash() {
+        if (mCamera != null) {
+            try {
+                Camera.Parameters parameters = mCamera.getParameters();
+                parameters.setFlashMode(Camera.Parameters.FLASH_MODE_OFF);
+                mCamera.setParameters(parameters);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public void setPreview(CameraPreview preview) {
@@ -224,17 +286,37 @@ public class CameraOperationHelper {
 
     public void startPreview() {
         Log.d(TAG, "startPreview: " + mCamera);
-        setCameraParameters();
+        setCameraDisplayOrientation(mCurrentCameraId, mCamera);
+        setCameraSize();
+        setParameterZoom();
         mPreview.setCamera(mCamera);
         safeToTakePicture = true;
     }
 
-    public void setCameraParameters() {
+    private void setParameterZoom() {
         if (mCamera == null) {
             return;
         }
-        mCamera.setDisplayOrientation(90);
+
         Camera.Parameters parameters = mCamera.getParameters();
+        int zoom = parameters.getZoom();
+        parameters.setZoom(1);
+        mCamera.setParameters(parameters);
+        Log.d(TAG, "setParameterZoom: " + zoom);
+    }
+
+    public void setCameraSize() {
+        if (mCamera == null) {
+            return;
+        }
+        //mCamera.setDisplayOrientation(90);
+        Camera.Parameters parameters = mCamera.getParameters();
+
+        Camera.Size pictureSize = parameters.getPictureSize();
+        Log.d(TAG, "pictureSize = height: " + pictureSize.height + "  width : " + pictureSize.width);
+
+        Camera.Size previewSize = parameters.getPreviewSize();
+        Log.d(TAG, "previewSize = height: " + previewSize.height + "  width : " + previewSize.width);
 
         //height: 2448  width : 3264 未设置前 图片的宽高
         // 获取摄像头支持的PictureSize列表
@@ -245,7 +327,7 @@ public class CameraOperationHelper {
         }
         Camera.Size picSize = getProperSize(pictureSizes, ((float) 1920) / 1080);
         if (picSize != null) {
-            parameters.setPictureSize(picSize.width, picSize.height);
+            //parameters.setPictureSize(picSize.width, picSize.height);
             Log.d(TAG, "picSize1 = height: " + picSize.height + "  width : " + picSize.width);
         } else {
             picSize = parameters.getPictureSize();
@@ -254,10 +336,14 @@ public class CameraOperationHelper {
 
         /*获取摄像头支持的PreviewSize列表*/
         List<Camera.Size> previewSizeList = parameters.getSupportedPreviewSizes();
+        for (int i = 0; i < pictureSizes.size(); i++) {
+            Camera.Size size = previewSizeList.get(i);
+            Log.d(TAG, "previewSize = height: " + size.height + "  width : " + size.width);
+        }
         Camera.Size preSize = getProperSize(previewSizeList, ((float) 1920) / 1080);
         if (null != preSize) {
             Log.d("preSize", preSize.width + "," + preSize.height);
-            parameters.setPreviewSize(preSize.width, preSize.height);
+            //parameters.setPreviewSize(preSize.width, preSize.height);
         }
 
         /*根据选出的PictureSize重新设置SurfaceView大小*/
@@ -342,5 +428,144 @@ public class CameraOperationHelper {
         String sceneMode = parameters.getSceneMode();
         Log.d(TAG, "sceneMode: " + sceneMode);
 
+    }
+
+    /**
+     * 预览图片的分辨率选择逻辑是：有1920*1080则选之，否则选硬件支持的最大的分辨率，且满足图片比例为16：9
+     *
+     * @param sizeList
+     * @param screenResolution
+     * @return
+     */
+    private static Point findBestPreviewSizeValue(List<Camera.Size> sizeList, Point screenResolution) {
+//        int bestX = 0;
+//        int bestY = 0;
+//        int size = 0;
+//        for (int i = 0; i < sizeList.size(); i++) {
+//            // 如果有符合的分辨率，则直接返回
+//            if (sizeList.get(i).width == DEFAULT_WIDTH && sizeList.get(i).height == DEFAULT_HEIGHT) {
+//                Log.d(TAG, "get default preview size!!!");
+//                return new Point(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+//            }
+//
+//            int newX = sizeList.get(i).width;
+//            int newY = sizeList.get(i).height;
+//            int newSize = Math.abs(newX * newX) + Math.abs(newY * newY);
+//            float ratio = (float) newY / (float) newX;
+//            Log.d(TAG, newX + ":" + newY + ":" + ratio);
+//            if (newSize >= size && ratio != 0.75) {  // 确保图片是16：9的
+//                bestX = newX;
+//                bestY = newY;
+//                size = newSize;
+//            } else if (newSize < size) {
+//                continue;
+//            }
+//        }
+//
+//        if (bestX > 0 && bestY > 0) {
+//            return new Point(bestX, bestY);
+//        }
+        return null;
+    }
+
+
+    /**
+     * 在硬件支持的拍照图片分辨率列表中，拍照图片分辨率选择逻辑：
+     * <p>
+     * 有1920*1080则选之
+     * 选择大于屏幕分辨率且图片比例为16:9的
+     * 选择图片分辨率尽可能大且图片比例为16:9的
+     *
+     * @param sizeList
+     * @param screenResolution
+     * @return
+     */
+    private static Point findBestPictureSizeValue(List<Camera.Size> sizeList, Point screenResolution) {
+//        List<Camera.Size> tempList = new ArrayList<>();
+//
+//        for (int i = 0; i < sizeList.size(); i++) {
+//            // 如果有符合的分辨率，则直接返回
+//            if (sizeList.get(i).width == DEFAULT_WIDTH && sizeList.get(i).height == DEFAULT_HEIGHT) {
+//                Log.d(TAG, "get default picture size!!!");
+//                return new Point(DEFAULT_WIDTH, DEFAULT_HEIGHT);
+//            }
+//            if (sizeList.get(i).width >= screenResolution.x && sizeList.get(i).height >= screenResolution.y) {
+//                tempList.add(sizeList.get(i));
+//            }
+//        }
+//
+//        int bestX = 0;
+//        int bestY = 0;
+//        int diff = Integer.MAX_VALUE;
+//        if (tempList != null && tempList.size() > 0) {
+//            for (int i = 0; i < tempList.size(); i++) {
+//                int newDiff = Math.abs(tempList.get(i).width - screenResolution.x) + Math.abs(tempList.get(i).height - screenResolution.y);
+//                float ratio = (float) tempList.get(i).height / tempList.get(i).width;
+//                Log.d(TAG, "ratio = " + ratio);
+//                if (newDiff < diff && ratio != 0.75) {  // 确保图片是16：9的
+//                    bestX = tempList.get(i).width;
+//                    bestY = tempList.get(i).height;
+//                    diff = newDiff;
+//                }
+//            }
+//        }
+//
+//        if (bestX > 0 && bestY > 0) {
+//            return new Point(bestX, bestY);
+//        } else {
+//            return findMaxPictureSizeValue(sizeList);
+//        }
+        return null;
+    }
+
+    /**
+     * 设置预览方向
+     * https://glumes.com/post/android/android-camera-aspect-ratio--and-orientation/
+     *
+     * @param cameraId
+     * @param camera
+     */
+    private void setCameraDisplayOrientation(int cameraId, android.hardware.Camera camera) {
+        android.hardware.Camera.CameraInfo info = new android.hardware.Camera.CameraInfo();
+        android.hardware.Camera.getCameraInfo(cameraId, info);
+        int rotation = ((Activity) mContext).getWindowManager().getDefaultDisplay().getRotation();
+        int degrees = RotationEventListener.getDegrees(rotation);
+        int result;
+        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            result = (info.orientation + degrees) % 360;
+            result = (360 - result) % 360;  // compensate the mirror
+        } else {  // back-facing
+            result = (info.orientation - degrees + 360) % 360;
+        }
+        camera.setDisplayOrientation(result);
+    }
+
+    /**
+     * 拍摄相片旋转问题
+     *
+     * @param
+     * @param orientation
+     */
+    public void orientationChanged(int orientation) {
+        if (mCamera == null) {
+            return;
+        }
+        Camera.Parameters parameters = mCamera.getParameters();
+        if (orientation == ORIENTATION_UNKNOWN) {
+            return;
+        }
+        android.hardware.Camera.CameraInfo info = new android.hardware.Camera.CameraInfo();
+        android.hardware.Camera.getCameraInfo(mCurrentCameraId, info);
+
+        orientation = (orientation + 45) / 90 * 90;
+        int rotation = 0;
+
+        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            rotation = (info.orientation - orientation + 360) % 360;
+        } else {  // back-facing camera
+            rotation = (info.orientation + orientation) % 360;
+        }
+        parameters.setRotation(rotation);
+        mCamera.setParameters(parameters);
     }
 }

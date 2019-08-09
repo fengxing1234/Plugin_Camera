@@ -25,6 +25,7 @@ public class SimpleCameraActivity extends Activity {
 
     private CameraOperationHelper mCameraHelper;
     private FocusCameraView focusView;
+    private RotationEventListener rotationEventListener;
 
 
     @Override
@@ -36,14 +37,18 @@ public class SimpleCameraActivity extends Activity {
 //        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
 //                WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.camera_activity);
-
+        rotationEventListener = new RotationEventListener(this) {
+            @Override
+            protected void onRotationChanged(int orientation, int newRotation, int oldRotation) {
+                SimpleCameraActivity.this.onRotationChanged(orientation, newRotation, oldRotation);
+            }
+        };
         CameraPreview preview = new CameraPreview(this);
         FrameLayout previewContainer = (FrameLayout) findViewById(R.id.camera_preview);
         focusView = (FocusCameraView) findViewById(R.id.over_camera_view);
         previewContainer.addView(preview);
         mCameraHelper = CameraOperationHelper.getInstance(this);
         mCameraHelper.setPreview(preview);
-        new IOrientationEventListener(this);
         Button captureButton = (Button) findViewById(R.id.button_capture);
         captureButton.setOnClickListener(
                 new View.OnClickListener() {
@@ -73,6 +78,11 @@ public class SimpleCameraActivity extends Activity {
         });
     }
 
+    public void onRotationChanged(int orientation, int newRotation, int oldRotation) {
+        mCameraHelper.orientationChanged(orientation);
+    }
+
+
     @Override
     public boolean onTouchEvent(MotionEvent event) {
         switch (event.getAction()) {
@@ -89,6 +99,9 @@ public class SimpleCameraActivity extends Activity {
         Log.d(TAG, "onResume: ");
         if (checkPermission()) {
             initCamera();
+            if (rotationEventListener != null) {
+                rotationEventListener.enable();
+            }
         }
     }
 
@@ -97,12 +110,17 @@ public class SimpleCameraActivity extends Activity {
         super.onPause();
         Log.d(TAG, "onPause: ");
         mCameraHelper.releaseCamera();
+        if (rotationEventListener != null) {
+            rotationEventListener.disable();
+        }
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "onDestroy: ");
+        rotationEventListener.disable();
+        rotationEventListener = null;
         mCameraHelper.releaseCamera();
         mCameraHelper = null;
     }
