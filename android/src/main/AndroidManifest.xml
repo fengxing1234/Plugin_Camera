@@ -10,6 +10,7 @@
     <application>
         <activity
             android:name=".camera.SimpleCameraActivity"
+            android:launchMode="singleTop"
             android:screenOrientation="portrait" />
     </application>
 </manifest>

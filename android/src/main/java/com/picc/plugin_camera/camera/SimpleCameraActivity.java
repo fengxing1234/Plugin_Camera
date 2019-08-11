@@ -66,6 +66,9 @@ public class SimpleCameraActivity extends Activity {
             @Override
             public void onClick(View v) {
                 mCameraHelper.doSwitchCamera();
+                int degrees = rotationEventListener.getCurrentDegrees();
+                Log.d(TAG, "onClick: " + degrees);
+                mCameraHelper.setOrientationChanged(degrees);
             }
         });
 
@@ -79,7 +82,7 @@ public class SimpleCameraActivity extends Activity {
     }
 
     public void onRotationChanged(int orientation, int newRotation, int oldRotation) {
-        mCameraHelper.orientationChanged(orientation);
+        mCameraHelper.setOrientationChanged(orientation);
     }
 
 
@@ -101,6 +104,7 @@ public class SimpleCameraActivity extends Activity {
             initCamera();
             if (rotationEventListener != null) {
                 rotationEventListener.enable();
+                mCameraHelper.setOrientationChanged(rotationEventListener.getCurrentDegrees());
             }
         }
     }

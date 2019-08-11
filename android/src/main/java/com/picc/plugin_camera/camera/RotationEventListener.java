@@ -15,7 +15,7 @@ public abstract class RotationEventListener {
     private int mCurrentDegrees = -1;
     private int mThreshold = THRESHOLD;
 
-    public RotationEventListener(Context context) {
+    public RotationEventListener(final Context context) {
 
         listener = new OrientationEventListener(context) {
             @Override
@@ -23,7 +23,6 @@ public abstract class RotationEventListener {
                 //转换成顺时针方向
                 int degrees = (360 - orientation) % 360;
                 int rotation = getRotation(degrees);
-                Log.d(TAG, "rotation: " + rotation + "  mCurrentDegrees = " + mCurrentDegrees);
                 //只在角度变化时回调
                 if (rotation != mCurrentDegrees && rotation != ORIENTATION_UNKNOWN) {
                     Log.d(TAG, "orientation : " + orientation + "  rotation = " + rotation);
@@ -45,6 +44,10 @@ public abstract class RotationEventListener {
             return;
         }
         this.mThreshold = threshold;
+    }
+
+    public int getCurrentDegrees() {
+        return mCurrentDegrees;
     }
 
     /**

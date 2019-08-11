@@ -85,6 +85,7 @@ public class CameraPreview extends SurfaceView implements SurfaceHolder.Callback
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
         Log.d(TAG, "surfaceChanged: surface发生变化");
+        Log.d(TAG, "format: " + format + " width = " + width + " height = " + height);
         // If your preview can change or rotate, take care of those events here.
         // Make sure to stop the preview before resizing or reformatting it.
         //如果您的预览可以更改或旋转，请在此处理这些事件。确保在调整大小或重新格式化之前停止预览。
