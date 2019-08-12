@@ -16,7 +16,7 @@ public abstract class RotationEventListener {
     private int mThreshold = THRESHOLD;
 
     public RotationEventListener(final Context context) {
-
+        Log.d(TAG, "RotationEventListener: 初始化");
         listener = new OrientationEventListener(context) {
             @Override
             public void onOrientationChanged(int orientation) {
@@ -25,7 +25,7 @@ public abstract class RotationEventListener {
                 int rotation = getRotation(degrees);
                 //只在角度变化时回调
                 if (rotation != mCurrentDegrees && rotation != ORIENTATION_UNKNOWN) {
-                    Log.d(TAG, "orientation : " + orientation + "  rotation = " + rotation);
+                    Log.d(TAG, "orientation : " + orientation + "  rotation = " + rotation + " mCurrentDegrees" + mCurrentDegrees);
                     onRotationChanged(orientation, rotation, mCurrentDegrees);
                     mCurrentDegrees = rotation;
                 }
@@ -47,6 +47,10 @@ public abstract class RotationEventListener {
     }
 
     public int getCurrentDegrees() {
+        Log.d(TAG, "getCurrentDegrees: " + mCurrentDegrees);
+        if (mCurrentDegrees == -1) {
+            return 0;
+        }
         return mCurrentDegrees;
     }
 
@@ -96,13 +100,13 @@ public abstract class RotationEventListener {
     protected abstract void onRotationChanged(int orientation, int newRotation, int oldRotation);
 
 
-    public void enable() {
+    public void enableRotation() {
         if (listener != null) {
             listener.enable();
         }
     }
 
-    public void disable() {
+    public void disableRotation() {
         if (listener != null) {
             listener.disable();
         }

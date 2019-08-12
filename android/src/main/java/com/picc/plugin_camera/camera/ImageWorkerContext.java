@@ -39,4 +39,6 @@ public interface ImageWorkerContext {
      */
     void proExecute();
 
+    int getDegrees();
+
 }

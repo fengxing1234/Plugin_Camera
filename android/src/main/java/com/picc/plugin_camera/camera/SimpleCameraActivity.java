@@ -25,7 +25,6 @@ public class SimpleCameraActivity extends Activity {
 
     private CameraOperationHelper mCameraHelper;
     private FocusCameraView focusView;
-    private RotationEventListener rotationEventListener;
 
 
     @Override
@@ -37,12 +36,6 @@ public class SimpleCameraActivity extends Activity {
 //        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
 //                WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.camera_activity);
-        rotationEventListener = new RotationEventListener(this) {
-            @Override
-            protected void onRotationChanged(int orientation, int newRotation, int oldRotation) {
-                SimpleCameraActivity.this.onRotationChanged(orientation, newRotation, oldRotation);
-            }
-        };
         CameraPreview preview = new CameraPreview(this);
         FrameLayout previewContainer = (FrameLayout) findViewById(R.id.camera_preview);
         focusView = (FocusCameraView) findViewById(R.id.over_camera_view);
@@ -66,9 +59,6 @@ public class SimpleCameraActivity extends Activity {
             @Override
             public void onClick(View v) {
                 mCameraHelper.doSwitchCamera();
-                int degrees = rotationEventListener.getCurrentDegrees();
-                Log.d(TAG, "onClick: " + degrees);
-                mCameraHelper.setOrientationChanged(degrees);
             }
         });
 
@@ -79,10 +69,6 @@ public class SimpleCameraActivity extends Activity {
                 mCameraHelper.doSwitchFlush();
             }
         });
-    }
-
-    public void onRotationChanged(int orientation, int newRotation, int oldRotation) {
-        mCameraHelper.setOrientationChanged(orientation);
     }
 
 
@@ -102,10 +88,6 @@ public class SimpleCameraActivity extends Activity {
         Log.d(TAG, "onResume: ");
         if (checkPermission()) {
             initCamera();
-            if (rotationEventListener != null) {
-                rotationEventListener.enable();
-                mCameraHelper.setOrientationChanged(rotationEventListener.getCurrentDegrees());
-            }
         }
     }
 
@@ -113,18 +95,13 @@ public class SimpleCameraActivity extends Activity {
     protected void onPause() {
         super.onPause();
         Log.d(TAG, "onPause: ");
-        mCameraHelper.releaseCamera();
-        if (rotationEventListener != null) {
-            rotationEventListener.disable();
-        }
+        mCameraHelper.onPause();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "onDestroy: ");
-        rotationEventListener.disable();
-        rotationEventListener = null;
         mCameraHelper.releaseCamera();
         mCameraHelper = null;
     }
@@ -195,8 +172,7 @@ public class SimpleCameraActivity extends Activity {
     }
 
     private void initCamera() {
-        mCameraHelper.safeOpenCamera();
-        mCameraHelper.startPreview();
+        mCameraHelper.onResume();
     }
 
 }

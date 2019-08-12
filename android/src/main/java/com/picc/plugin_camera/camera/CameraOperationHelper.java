@@ -21,7 +21,7 @@ import static android.view.OrientationEventListener.ORIENTATION_UNKNOWN;
  * 并提供用于跟自定义相机Activity做UI交互的回调接口，
  * 其功能函数如下，主要有创建\释放相机，连接\开始\关闭预览界面，拍照，自动对焦，切换前后摄像头，切换闪光灯模式等
  */
-public class CameraOperationHelper {
+public class CameraOperationHelper extends RotationEventListener {
 
     private static final String TAG = CameraOperationHelper.class.getSimpleName();
 
@@ -36,9 +36,14 @@ public class CameraOperationHelper {
     private int mCurrentCameraId;
     private boolean mCameraReady;
 
-
     private CameraOperationHelper(Context context) {
+        super(context);
         this.mContext = context;
+    }
+
+    @Override
+    protected void onRotationChanged(int orientation, int newRotation, int oldRotation) {
+        setOrientationChanged(orientation);
     }
 
     public static CameraOperationHelper getInstance(Context context) {
@@ -51,6 +56,7 @@ public class CameraOperationHelper {
         }
         return instance;
     }
+
 
     private Camera.PictureCallback mPictureRow = new Camera.PictureCallback() {
         @Override
@@ -117,6 +123,11 @@ public class CameraOperationHelper {
         public void proExecute() {
 
         }
+
+        @Override
+        public int getDegrees() {
+            return CameraUtils.getDegrees(getCurrentDegrees());
+        }
     };
 
     /**
@@ -178,6 +189,7 @@ public class CameraOperationHelper {
 
     public void releaseCamera() {
         try {
+            disableRotation();
             if (mCamera != null) {
                 mCamera.stopPreview();
                 mCamera.release();
@@ -272,6 +284,18 @@ public class CameraOperationHelper {
         mCamera.setParameters(parameters);
     }
 
+    public void onResume() {
+        safeOpenCamera();
+        startPreview();
+        enableRotation();
+        Log.d(TAG, "onResume: enableRotation");
+    }
+
+    public void onPause() {
+        disableRotation();
+        releaseCamera();
+    }
+
     public void startPreview() {
         Log.d(TAG, "startPreview: " + mCamera);
         setCameraDisplayOrientation(mCurrentCameraId, mCamera);
@@ -279,6 +303,7 @@ public class CameraOperationHelper {
         setCameraOther();
         mPreview.setCamera(mCamera);
         safeToTakePicture = true;
+        setOrientationChanged(getCurrentDegrees());
     }
 
     private void setCameraOther() {
@@ -314,7 +339,12 @@ public class CameraOperationHelper {
         parameters.setPreviewSize(previewResolution.x, previewResolution.y);
 
         //设置图片尺寸
-        Point pictureResolution = CameraUtils.findBestPictureResolution2(parameters, ScreenUtils.getScreenRawPixels(mContext), ScreenUtils.getScreenOrientation(mContext), ScreenUtils.getRotation(mContext));
+        Point point = new Point(4, 3); //按比例 4：3
+        Point pictureResolution = CameraUtils.findBestPictureResolution(parameters, point);
+        //寻找最接近屏幕的尺寸
+        //Point pictureResolution = CameraUtils.findBestPictureResolution(parameters, ScreenUtils.getScreenRawPixels(mContext));
+        //寻找最接近预览尺寸的比例
+        //Point pictureResolution = CameraUtils.findBestPictureResolution2(parameters, ScreenUtils.getScreenRawPixels(mContext), ScreenUtils.getScreenOrientation(mContext), ScreenUtils.getRotation(mContext));
         Log.d(TAG, "setCameraSize: " + pictureResolution.x + "," + pictureResolution.y);
         parameters.setPictureSize(pictureResolution.x, pictureResolution.y);
 
@@ -365,6 +395,7 @@ public class CameraOperationHelper {
      * @param orientation
      */
     public void setOrientationChanged(int orientation) {
+        Log.d(TAG, "setOrientationChanged: orientation = " + orientation);
         if (mCamera == null) {
             return;
         }
@@ -383,6 +414,7 @@ public class CameraOperationHelper {
         } else {  // back-facing camera
             rotation = (info.orientation + orientation) % 360;
         }
+        Log.d(TAG, "setOrientationChanged: rotation = " + rotation);
         parameters.setRotation(rotation);
         mCamera.setParameters(parameters);
     }

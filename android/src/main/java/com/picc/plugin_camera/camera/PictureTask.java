@@ -1,9 +1,10 @@
 package com.picc.plugin_camera.camera;
 
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
 import android.util.Log;
+
+import com.picc.plugin_camera.BitmapUtils;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -22,9 +23,9 @@ public class PictureTask extends AsyncTask<byte[], Integer, String> {
      */
     public static final int COMPRESS_SIZE = 150;
     private static final int BYTE_MONAD = 1024;
-    private int scaleHeight = 600;
-    private int scaleWidth = 800;
-    private boolean srcImg = true;
+    private int scaleHeight = 1960;
+    private int scaleWidth = 1080;
+    private boolean srcImg = false;
 
     private ImageWorkerContext mImageWorkerContext;
 
@@ -49,28 +50,46 @@ public class PictureTask extends AsyncTask<byte[], Integer, String> {
         File[] imageFile = mImageWorkerContext.createImageFile();
         File pictureFile = imageFile[0];
 //        File thumbFile = imageFile[1];
-
+        String[] split = pictureFile.getAbsolutePath().split(".png");
+        String rawFile = split[0] + "_raw.png";
+        saveRawPicture(data, new File(rawFile));
         if (srcImg) {
-            long startTime = System.currentTimeMillis();
-            BufferedOutputStream bos = null;
-            try {
-                bos = new BufferedOutputStream(new FileOutputStream(pictureFile));
-                bos.write(data);
-                bos.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            Log.d(TAG, "耗时: " + (System.currentTimeMillis() - startTime));
+
         } else {
-            Bitmap bitmap = compressBitmap(bytes[0]);
-            bitmap = scaleBitmap(bitmap);
-            bitmapToFile(pictureFile.getAbsolutePath(), bitmap);
+            saveCompressPicture(data, pictureFile);
         }
 
 
         return null;
+    }
+
+    private void saveCompressPicture(byte[] data, File pictureFile) {
+        Bitmap bitmap = BitmapUtils.bytes2Bitmap(data);
+        //int degrees = mImageWorkerContext.getDegrees();
+        //bitmap = BitmapUtils.bitmapRotate(bitmap, degrees);
+        BitmapUtils.compressAndSaveBitmap(bitmap, pictureFile);
+        //BitmapUtils.saveBitmap(bitmap, pictureFile, 100, true);
+    }
+
+    /**
+     * 保存原图 不做压缩
+     *
+     * @param data
+     * @param pictureFile
+     */
+    private void saveRawPicture(byte[] data, File pictureFile) {
+        long startTime = System.currentTimeMillis();
+        BufferedOutputStream bos = null;
+        try {
+            bos = new BufferedOutputStream(new FileOutputStream(pictureFile));
+            bos.write(data);
+            bos.close();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Log.d(TAG, "耗时: " + (System.currentTimeMillis() - startTime));
     }
 
     /**
@@ -113,93 +132,6 @@ public class PictureTask extends AsyncTask<byte[], Integer, String> {
             }
         }
         return imageFile;
-    }
-
-
-    /**
-     * 缩放图片
-     *
-     * @param bitmap
-     * @return
-     */
-    private Bitmap scaleBitmap(Bitmap bitmap) {
-        //实际宽高
-        float width = bitmap.getWidth();
-        float height = bitmap.getHeight();
-        //断言width是长边
-        if (width < height) {
-            float temp = width;
-            width = height;
-            height = temp;
-            double scale = height / width;
-            //新的宽高
-            float newHeight = scaleWidth;
-            double newWidth = newHeight * scale;
-            return Bitmap.createScaledBitmap(bitmap, (int) newWidth, (int) newHeight, false);
-        }
-        double scale = height / width;
-        //新的宽高
-        float newWidth = scaleWidth;
-        double newHeight = newWidth * scale;
-
-        return Bitmap.createScaledBitmap(bitmap, (int) newWidth, (int) newHeight, false);
-
-    }
-
-    /**
-     * 解析图片
-     *
-     * @param data
-     * @return
-     */
-    public Bitmap compressBitmap(byte[] data) {
-        BitmapFactory.Options options = new BitmapFactory.Options();
-        options.inJustDecodeBounds = true;
-        BitmapFactory.decodeByteArray(data, 0, data.length, options);
-        int imageHeight = options.outHeight;
-        int imageWidth = options.outWidth;
-        if (imageHeight > imageWidth) {
-            options.inSampleSize = calculateInSampleSize(options, scaleHeight,
-                    scaleWidth);
-        } else {
-            options.inSampleSize = calculateInSampleSize(options, scaleWidth,
-                    scaleHeight);
-        }
-        options.inJustDecodeBounds = false;
-        Bitmap source = BitmapFactory.decodeByteArray(data, 0, data.length, options);
-        return source;
-    }
-
-    /**
-     * 计算采样率
-     *
-     * @param options
-     * @param reqWidth
-     * @param reqHeight
-     * @return
-     */
-    private int calculateInSampleSize(BitmapFactory.Options options,
-                                      int reqWidth, int reqHeight) {
-        // Raw height and width of image
-        final int height = options.outHeight;
-        final int width = options.outWidth;
-        int inSampleSize = 1;
-
-        if (height > reqHeight || width > reqWidth) {
-
-            final int halfHeight = height / 2;
-            final int halfWidth = width / 2;
-
-            // Calculate the largest inSampleSize value that is a power of 2 and
-            // keeps both
-            // height and width larger than the requested height and width.
-            while ((halfHeight / inSampleSize) > reqHeight
-                    && (halfWidth / inSampleSize) > reqWidth) {
-                inSampleSize *= 2;
-            }
-        }
-
-        return inSampleSize;
     }
 
 

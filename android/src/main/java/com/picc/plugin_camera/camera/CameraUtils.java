@@ -3,7 +3,9 @@ package com.picc.plugin_camera.camera;
 import android.graphics.Point;
 import android.graphics.Rect;
 import android.hardware.Camera;
+import android.media.ExifInterface;
 import android.util.Log;
+import android.view.Surface;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -39,6 +41,22 @@ public class CameraUtils {
             default:
                 return null;
         }
+    }
+
+    public static int getDegrees(int orientation) {
+        int degree = 0;
+        switch (orientation) {
+            case Surface.ROTATION_0:
+                degree = 90;
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_180:
+                degree = 180;
+                break;
+            case ExifInterface.ORIENTATION_ROTATE_270:
+                degree = 270;
+                break;
+        }
+        return degree;
     }
 
 
@@ -192,6 +210,7 @@ public class CameraUtils {
 
     /**
      * 屏幕尺寸
+     *
      * @param cameraParameters
      * @param screenResolution
      * @param screenOrientation
@@ -287,7 +306,7 @@ public class CameraUtils {
         int targetHeight = h;
 
         // Try to find an size match aspect ratio and size
-        for ( Camera.Size size : sizes) {
+        for (Camera.Size size : sizes) {
             double ratio = (double) size.width / size.height;
             if (Math.abs(ratio - targetRatio) > ASPECT_TOLERANCE)
                 continue;
