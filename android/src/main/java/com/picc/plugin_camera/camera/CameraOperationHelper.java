@@ -21,7 +21,7 @@ import static android.view.OrientationEventListener.ORIENTATION_UNKNOWN;
  * 并提供用于跟自定义相机Activity做UI交互的回调接口，
  * 其功能函数如下，主要有创建\释放相机，连接\开始\关闭预览界面，拍照，自动对焦，切换前后摄像头，切换闪光灯模式等
  */
-public class CameraOperationHelper extends RotationEventListener {
+public class CameraOperationHelper extends RotationEventListener implements ICamera {
 
     private static final String TAG = CameraOperationHelper.class.getSimpleName();
 
@@ -43,6 +43,9 @@ public class CameraOperationHelper extends RotationEventListener {
 
     @Override
     protected void onRotationChanged(int orientation, int newRotation, int oldRotation) {
+        if (iCameraCallback != null) {
+            iCameraCallback.onRotationChanged(orientation,newRotation,oldRotation);
+        }
         setOrientationChanged(orientation);
     }
 
@@ -131,17 +134,6 @@ public class CameraOperationHelper extends RotationEventListener {
     };
 
     /**
-     * 文件保存位置
-     *
-     * @return
-     */
-    private File[] generateNewImageFile() {
-        File images = mContext.getExternalFilesDir("images");
-        File file = new File(images, System.currentTimeMillis() + ".png");
-        return new File[]{file};
-    }
-
-    /**
      * 切换相机 和 第一次创建相机 会调用 标示已经准备好了 可以拍了
      */
     private Camera.PreviewCallback mOneShotPreviewCallback = new Camera.PreviewCallback() {
@@ -152,56 +144,49 @@ public class CameraOperationHelper extends RotationEventListener {
         }
     };
 
+    public interface ICameraCallback {
 
-    /**
-     * 图片保存路径
-     *
-     * @param mediaTypeImage
-     * @return
-     */
-    private File getOutputMediaFile(int mediaTypeImage) {
-        File images = mContext.getExternalFilesDir("images");
-        return new File(images, System.currentTimeMillis() + ".png");
+        void onCameraReady();
+
+        void onRotationChanged(int orientation, int newRotation, int oldRotation);
     }
 
-    /**
-     * 安全的打开摄像头
-     */
-    public Camera safeOpenCamera() {
-        try {
-            initAvailableCameraId();
-            boolean hasCamera = mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA);
-            Log.d(TAG, "是否有相机资源: " + hasCamera);
-            //获取camera实例。attempt to get a Camera instance
-            if (hasCamera) {
-                mCamera = Camera.open(mCurrentCameraId);
-                mCamera.setOneShotPreviewCallback(mOneShotPreviewCallback);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return mCamera;
+    private ICameraCallback iCameraCallback;
+
+    public void setICameraCallback(ICameraCallback iCameraCallback) {
+        this.iCameraCallback = iCameraCallback;
     }
 
-    public void setPreview(CameraPreview preview) {
+    @Override
+    public void init(CameraPreview preview) {
         this.mPreview = preview;
+        safeOpenCamera();
+        setupCameraParameters();
+        startPreview();
+        if (iCameraCallback != null) {
+            iCameraCallback.onCameraReady();
+        }
+
     }
 
-    public void releaseCamera() {
-        try {
-            disableRotation();
-            if (mCamera != null) {
-                mCamera.stopPreview();
-                mCamera.release();
-                mCamera = null;
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-            Log.d(TAG, "releaseCamera: " + e.getMessage());
+    @Override
+    public void onResume() {
+        enableRotation();
+        if (mCamera == null) {
+            safeOpenCamera();
+            setupCameraParameters();
+            startPreview();
         }
     }
 
-    public void takePicture() {
+    @Override
+    public void onPause() {
+        disableRotation();
+        releaseCamera();
+    }
+
+    @Override
+    public void doTakePicture() {
         try {
             if (safeToTakePicture && mCameraReady) {
                 mCamera.takePicture(mShutterCallback, mPictureRow, mPictureCallback);
@@ -214,8 +199,87 @@ public class CameraOperationHelper extends RotationEventListener {
             safeOpenCamera();
             startPreview();
         }
-
     }
+
+    /**
+     * 切换前后摄像头
+     */
+    @Override
+    public void doSwitchCamera() {
+        if (!mCameraReady) {
+            return;
+        }
+        mCameraReady = false;
+        if (mCurrentCameraId == CAMERA_ID_BACK) {
+            mCurrentCameraId = CAMERA_ID_FRONT;
+        } else {
+            mCurrentCameraId = CAMERA_ID_BACK;
+        }
+
+        Log.d(TAG, "doSwitchCamera: " + mCurrentCameraId);
+        releaseCamera();
+        safeOpenCamera();
+        setupCameraParameters();
+        startPreview();
+        if (iCameraCallback != null) {
+            iCameraCallback.onCameraReady();
+        }
+    }
+
+    @Override
+    public void doSwitchFlush() {
+        if (mCamera == null) {
+            return;
+        }
+        Camera.Parameters parameters = mCamera.getParameters();
+        String flashMode = parameters.getFlashMode();
+        if (Camera.Parameters.FLASH_MODE_OFF.equals(flashMode)) {
+            flashMode = Camera.Parameters.FLASH_MODE_ON;
+        } else if (Camera.Parameters.FLASH_MODE_ON.equals(flashMode)) {
+            flashMode = Camera.Parameters.FLASH_MODE_OFF;
+        } else {
+            flashMode = Camera.Parameters.FLASH_MODE_OFF;
+        }
+        setFlushMode(flashMode);
+    }
+
+
+    /**
+     * 闪光模式
+     * <p>
+     * 如果摄像头不支持这些参数都会出错的，所以设置的时候一定要判断是否支持
+     *
+     * @param flushMode
+     */
+    private void setFlushMode(String flushMode) {
+        if (mCamera == null) {
+            return;
+        }
+        Camera.Parameters parameters = mCamera.getParameters();
+        List<String> supportedFlashModes = parameters.getSupportedFlashModes();
+        if (supportedFlashModes != null && supportedFlashModes.contains(flushMode)) {
+            parameters.setFlashMode(flushMode);
+        }
+        mCamera.setParameters(parameters);
+    }
+
+    /**
+     * 如果没有合适的 返回null 请注意
+     *
+     * @return
+     */
+    @Override
+    public String getFlushMode() {
+        if (mCamera == null) return null;
+        return mCamera.getParameters().getFlashMode();
+    }
+
+    @Override
+    public void release() {
+        mPreview = null;
+        releaseCamera();
+    }
+
 
     /**
      * 找出前置摄像头和后置摄像头对应的 id，
@@ -237,74 +301,80 @@ public class CameraOperationHelper extends RotationEventListener {
                 CAMERA_ID_FRONT = i;
             }
         }
-        Log.d(TAG, "CAMERA_ID_BACK: " + CAMERA_ID_BACK + "::: CAMERA_ID_FRONT : " + CAMERA_ID_FRONT);
     }
 
     /**
-     * 切换前后摄像头
+     * 安全的打开摄像头
      */
-    public void doSwitchCamera() {
-        if (!mCameraReady) {
-            return;
+    private Camera safeOpenCamera() {
+        try {
+            initAvailableCameraId();
+            boolean hasCamera = mContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_CAMERA);
+            Log.d(TAG, "是否有相机资源: " + hasCamera);
+            //获取camera实例。attempt to get a Camera instance
+            if (hasCamera) {
+                mCamera = Camera.open(mCurrentCameraId);
+                mCamera.setOneShotPreviewCallback(mOneShotPreviewCallback);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        mCameraReady = false;
-        if (mCurrentCameraId == CAMERA_ID_BACK) {
-            mCurrentCameraId = CAMERA_ID_FRONT;
-        } else {
-            mCurrentCameraId = CAMERA_ID_BACK;
-        }
-
-        Log.d(TAG, "doSwitchCamera: " + mCurrentCameraId);
-        releaseCamera();
-        safeOpenCamera();
-        startPreview();
-    }
-
-
-    public void doSwitchFlush() {
-        setFlushMode(Camera.Parameters.FLASH_MODE_TORCH);
+        return mCamera;
     }
 
     /**
-     * 闪光模式
-     * <p>
-     * 如果摄像头不支持这些参数都会出错的，所以设置的时候一定要判断是否支持
-     *
-     * @param flushMode
+     * 设置相机参数
      */
-    public void setFlushMode(String flushMode) {
-        if (mCamera == null) {
-            return;
-        }
-        Camera.Parameters parameters = mCamera.getParameters();
-        List<String> supportedFlashModes = parameters.getSupportedFlashModes();
-        if (supportedFlashModes != null && supportedFlashModes.contains(flushMode)) {
-            parameters.setFlashMode(flushMode);
-        }
-        mCamera.setParameters(parameters);
-    }
-
-    public void onResume() {
-        safeOpenCamera();
-        startPreview();
-        enableRotation();
-        Log.d(TAG, "onResume: enableRotation");
-    }
-
-    public void onPause() {
-        disableRotation();
-        releaseCamera();
-    }
-
-    public void startPreview() {
-        Log.d(TAG, "startPreview: " + mCamera);
+    private void setupCameraParameters() {
         setCameraDisplayOrientation(mCurrentCameraId, mCamera);
         setCameraSize();
         setCameraOther();
-        mPreview.setCamera(mCamera);
-        safeToTakePicture = true;
         setOrientationChanged(getCurrentDegrees());
     }
+
+    private void startPreview() {
+        mPreview.setCamera(mCamera);
+        safeToTakePicture = true;
+    }
+
+    private void releaseCamera() {
+        try {
+            disableRotation();
+            if (mCamera != null) {
+                mCamera.stopPreview();
+                mCamera.release();
+                mCamera = null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.d(TAG, "releaseCamera: " + e.getMessage());
+        }
+    }
+
+
+    /**
+     * 文件保存位置
+     *
+     * @return
+     */
+    private File[] generateNewImageFile() {
+        File images = mContext.getExternalFilesDir("images");
+        File file = new File(images, System.currentTimeMillis() + ".png");
+        return new File[]{file};
+    }
+
+
+    /**
+     * 图片保存路径
+     *
+     * @param mediaTypeImage
+     * @return
+     */
+    private File getOutputMediaFile(int mediaTypeImage) {
+        File images = mContext.getExternalFilesDir("images");
+        return new File(images, System.currentTimeMillis() + ".png");
+    }
+
 
     private void setCameraOther() {
         if (mCamera == null) {
@@ -329,7 +399,7 @@ public class CameraOperationHelper extends RotationEventListener {
         Log.d(TAG, "setParameterZoom: " + zoom);
     }
 
-    public void setCameraSize() {
+    private void setCameraSize() {
         if (mCamera == null) {
             return;
         }
@@ -394,7 +464,7 @@ public class CameraOperationHelper extends RotationEventListener {
      * @param
      * @param orientation
      */
-    public void setOrientationChanged(int orientation) {
+    private void setOrientationChanged(int orientation) {
         Log.d(TAG, "setOrientationChanged: orientation = " + orientation);
         if (mCamera == null) {
             return;

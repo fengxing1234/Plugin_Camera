@@ -102,12 +102,14 @@
             android:orientation="horizontal">
 
             <com.picc.plugin_camera.CircularImageView
+                android:id="@+id/iv_thumbnail"
                 android:layout_width="42dp"
                 android:layout_height="42dp"
                 android:src="@color/colorAccent"
                 app:is_circle="true" />
 
             <ImageButton
+                android:id="@+id/iv_take_picture"
                 android:layout_width="56dp"
                 android:layout_height="56dp"
                 android:layout_marginLeft="58dp"

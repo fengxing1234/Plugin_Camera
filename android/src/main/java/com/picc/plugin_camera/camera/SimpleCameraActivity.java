@@ -5,16 +5,21 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.Drawable;
+import android.hardware.Camera;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
+import android.view.View;
 import android.view.Window;
 import android.widget.FrameLayout;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import com.picc.plugin_camera.CircularImageView;
 import com.picc.plugin_camera.R;
 
 
@@ -29,7 +34,9 @@ public class SimpleCameraActivity extends Activity {
     private ImageView ivSwitchCamera;
     private ImageView ivFlushMode;
     private ImageView ivImportImage;
-    private ImageView ivTextBg;
+    private CircularImageView ivThumbnail;
+    private ImageButton ivTakePicture;
+    private ImageButton ivPictureType;
 
 
     @Override
@@ -37,53 +44,108 @@ public class SimpleCameraActivity extends Activity {
         super.onCreate(savedInstanceState);
         //去除标题栏
         requestWindowFeature(Window.FEATURE_NO_TITLE);
-        //去除状态栏
-//        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
-//                WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.camera_activity);
         initView();
+        if (checkPermission()) {
+            initCamera();
+        }
+    }
+
+    private void initCamera() {
         CameraPreview preview = new CameraPreview(this);
         FrameLayout previewContainer = (FrameLayout) findViewById(R.id.camera_preview);
         focusView = (FocusCameraView) findViewById(R.id.over_camera_view);
         previewContainer.addView(preview);
         mCameraHelper = CameraOperationHelper.getInstance(this);
-        mCameraHelper.setPreview(preview);
+        mCameraHelper.setICameraCallback(new CameraOperationHelper.ICameraCallback() {
+            @Override
+            public void onCameraReady() {
+                Log.d(TAG, "onCameraReady: ");
+                setupFlushIcon();
+            }
 
+            @Override
+            public void onRotationChanged(int orientation, int newRotation, int oldRotation) {
+                int degrees = RotationEventListener.getDegrees(newRotation);
+                ivSwitchCamera.animate().rotation(degrees).start();
+                ivFlushMode.animate().rotation(degrees).start();
+                ivImportImage.animate().rotation(degrees).start();
+                ivThumbnail.animate().rotation(degrees).start();
+                ivTakePicture.animate().rotation(degrees).start();
+                ivPictureType.animate().rotation(degrees).start();
+            }
+        });
+        mCameraHelper.init(preview);
 
-//        Button captureButton = (Button) findViewById(R.id.button_capture);
-//        captureButton.setOnClickListener(
-//                new View.OnClickListener() {
-//                    @Override
-//                    public void onClick(View v) {
-//                        // get an image from the camera
-//                        //这个是实现相机拍照的主要方法，包含了三个回调参数。shutter是快门按下时的回调，raw是获取拍照原始数据的回调，jpeg是获取经过压缩成jpg格式的图像数据的回调。
-//                        mCameraHelper.takePicture();
-//                    }
-//                }
-//        );
-//
-//        Button btnSwitchCamera = findViewById(R.id.btn_switch_camera);
-//        btnSwitchCamera.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                mCameraHelper.doSwitchCamera();
-//            }
-//        });
-//
-//        Button btnFlushMode = findViewById(R.id.btn_flush_mode);
-//        btnFlushMode.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                mCameraHelper.doSwitchFlush();
-//            }
-//        });
     }
 
     private void initView() {
         ivBack = (ImageView) findViewById(R.id.iv_back);
-        ivSwitchCamera = (ImageView) findViewById(R.id.iv_switch_camera);
-        ivFlushMode = (ImageView) findViewById(R.id.iv_flush_mode);
-        ivImportImage = (ImageView) findViewById(R.id.iv_import_image);
+        ivSwitchCamera = findViewById(R.id.iv_switch_camera);
+        ivFlushMode = findViewById(R.id.iv_flush_mode);
+        ivImportImage = findViewById(R.id.iv_import_image);
+        ivThumbnail = findViewById(R.id.iv_thumbnail);
+        ivTakePicture = findViewById(R.id.iv_take_picture);
+        ivPictureType = findViewById(R.id.iv_picture_type);
+
+        ivBack.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                finish();
+            }
+        });
+        ivSwitchCamera.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mCameraHelper.doSwitchCamera();
+            }
+        });
+        ivFlushMode.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mCameraHelper.doSwitchFlush();
+                setupFlushIcon();
+            }
+        });
+        ivImportImage.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
+        ivThumbnail.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
+        ivTakePicture.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mCameraHelper.doTakePicture();
+            }
+        });
+        ivPictureType.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
+    }
+
+    private void setupFlushIcon() {
+        ivFlushMode.setImageDrawable(getFlushModeDrawable());
+    }
+
+    private Drawable getFlushModeDrawable() {
+        Log.d(TAG, "getFlushModeDrawable: " + mCameraHelper);
+        if (Camera.Parameters.FLASH_MODE_ON.equals(mCameraHelper.getFlushMode())) {
+            return getResources().getDrawable(R.drawable.icon_flush_open);
+        }
+        if (Camera.Parameters.FLASH_MODE_OFF.equals(mCameraHelper.getFlushMode())) {
+            return getResources().getDrawable(R.drawable.icon_flush_mode);
+        }
+        return getResources().getDrawable(R.drawable.icon_flush_mode);
     }
 
     @Override
@@ -100,9 +162,8 @@ public class SimpleCameraActivity extends Activity {
     protected void onResume() {
         super.onResume();
         Log.d(TAG, "onResume: ");
-        if (checkPermission()) {
-            initCamera();
-        }
+        mCameraHelper.onResume();
+        setupFlushIcon();
     }
 
     @Override
@@ -116,7 +177,7 @@ public class SimpleCameraActivity extends Activity {
     protected void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "onDestroy: ");
-        mCameraHelper.releaseCamera();
+        mCameraHelper.release();
         mCameraHelper = null;
     }
 
@@ -184,9 +245,4 @@ public class SimpleCameraActivity extends Activity {
             }
         }
     }
-
-    private void initCamera() {
-        mCameraHelper.onResume();
-    }
-
 }
