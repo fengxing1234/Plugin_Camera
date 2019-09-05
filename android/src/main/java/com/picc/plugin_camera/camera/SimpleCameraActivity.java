@@ -8,10 +8,9 @@ import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.MotionEvent;
-import android.view.View;
 import android.view.Window;
-import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -26,6 +25,11 @@ public class SimpleCameraActivity extends Activity {
 
     private CameraOperationHelper mCameraHelper;
     private FocusCameraView focusView;
+    private ImageView ivBack;
+    private ImageView ivSwitchCamera;
+    private ImageView ivFlushMode;
+    private ImageView ivImportImage;
+    private ImageView ivTextBg;
 
 
     @Override
@@ -37,41 +41,50 @@ public class SimpleCameraActivity extends Activity {
 //        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
 //                WindowManager.LayoutParams.FLAG_FULLSCREEN);
         setContentView(R.layout.camera_activity);
+        initView();
         CameraPreview preview = new CameraPreview(this);
         FrameLayout previewContainer = (FrameLayout) findViewById(R.id.camera_preview);
         focusView = (FocusCameraView) findViewById(R.id.over_camera_view);
         previewContainer.addView(preview);
         mCameraHelper = CameraOperationHelper.getInstance(this);
         mCameraHelper.setPreview(preview);
-        Button captureButton = (Button) findViewById(R.id.button_capture);
-        captureButton.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        // get an image from the camera
-                        //这个是实现相机拍照的主要方法，包含了三个回调参数。shutter是快门按下时的回调，raw是获取拍照原始数据的回调，jpeg是获取经过压缩成jpg格式的图像数据的回调。
-                        mCameraHelper.takePicture();
-                    }
-                }
-        );
 
-        Button btnSwitchCamera = findViewById(R.id.btn_switch_camera);
-        btnSwitchCamera.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mCameraHelper.doSwitchCamera();
-            }
-        });
 
-        Button btnFlushMode = findViewById(R.id.btn_flush_mode);
-        btnFlushMode.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mCameraHelper.doSwitchFlush();
-            }
-        });
+//        Button captureButton = (Button) findViewById(R.id.button_capture);
+//        captureButton.setOnClickListener(
+//                new View.OnClickListener() {
+//                    @Override
+//                    public void onClick(View v) {
+//                        // get an image from the camera
+//                        //这个是实现相机拍照的主要方法，包含了三个回调参数。shutter是快门按下时的回调，raw是获取拍照原始数据的回调，jpeg是获取经过压缩成jpg格式的图像数据的回调。
+//                        mCameraHelper.takePicture();
+//                    }
+//                }
+//        );
+//
+//        Button btnSwitchCamera = findViewById(R.id.btn_switch_camera);
+//        btnSwitchCamera.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                mCameraHelper.doSwitchCamera();
+//            }
+//        });
+//
+//        Button btnFlushMode = findViewById(R.id.btn_flush_mode);
+//        btnFlushMode.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                mCameraHelper.doSwitchFlush();
+//            }
+//        });
     }
 
+    private void initView() {
+        ivBack = (ImageView) findViewById(R.id.iv_back);
+        ivSwitchCamera = (ImageView) findViewById(R.id.iv_switch_camera);
+        ivFlushMode = (ImageView) findViewById(R.id.iv_flush_mode);
+        ivImportImage = (ImageView) findViewById(R.id.iv_import_image);
+    }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {

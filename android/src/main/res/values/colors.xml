@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="title_bar_color">#C7000000</color>
+    <color name="camera_text_bg_color">#66000000</color>
+    <color name="colorPrimary">#fff</color>
+    <color name="colorPrimaryDark">#a7a6a6</color>
+    <color name="colorAccent">#3cd3f6</color>
+
+    <color name="background">#f3f3f3</color>
+    <color name="divider">#e6e6e6</color>
+    <color name="lighter_divider">#333333</color>
+
+    <color name="textColorPrimary">#666666</color>
+    <color name="textColorSecondary">#999999</color>
+    <color name="textColorTertiary">#bcbecf</color>
+
+    <color name="colorPrimaryDisabled">#463cd3f6</color>
+    <color name="colorPrimaryPressed">#3cd3f6</color>
+
+    <color name="indicator_unselected">#ffffff</color>
+    <color name="indicator_selected">#4996ff</color>
+
+    <color name="l_text_color_count">#fff</color>
+    <color name="l_text_background_count">#4996ff</color>
+    <color name="l_background_count">#fff</color>
+
+
+    <color name="toolbar_text_color">#1a1a1a</color>
+</resources>
