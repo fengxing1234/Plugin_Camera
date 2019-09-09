@@ -3,12 +3,13 @@ package com.picc.plugin_camera.camera;
 import android.app.Activity;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.graphics.Point;
 import android.hardware.Camera;
 import android.util.Log;
 
-import com.picc.plugin_camera.ScreenUtils;
+import com.picc.plugin_camera.utils.ScreenUtils;
 
 import java.io.File;
 import java.util.List;
@@ -43,8 +44,9 @@ public class CameraOperationHelper extends RotationEventListener implements ICam
 
     @Override
     protected void onRotationChanged(int orientation, int newRotation, int oldRotation) {
+        Log.d(TAG, "怎么可能是-1: " + orientation);
         if (iCameraCallback != null) {
-            iCameraCallback.onRotationChanged(orientation,newRotation,oldRotation);
+            iCameraCallback.onRotationChanged(orientation, newRotation, oldRotation);
         }
         setOrientationChanged(orientation);
     }
@@ -109,7 +111,7 @@ public class CameraOperationHelper extends RotationEventListener implements ICam
 
         @Override
         public File[] createImageFile() {
-            return generateNewImageFile();
+            return iCameraCallback.generateNewImageFile();
         }
 
         @Override
@@ -131,6 +133,11 @@ public class CameraOperationHelper extends RotationEventListener implements ICam
         public int getDegrees() {
             return CameraUtils.getDegrees(getCurrentDegrees());
         }
+
+        @Override
+        public void onThumbnailSaveDone(Bitmap thumbnail, File thumb) {
+            iCameraCallback.onThumbnailSaveDone(thumbnail, thumb);
+        }
     };
 
     /**
@@ -149,6 +156,10 @@ public class CameraOperationHelper extends RotationEventListener implements ICam
         void onCameraReady();
 
         void onRotationChanged(int orientation, int newRotation, int oldRotation);
+
+        File[] generateNewImageFile();
+
+        void onThumbnailSaveDone(Bitmap thumbnail, File thumb);
     }
 
     private ICameraCallback iCameraCallback;
@@ -172,7 +183,7 @@ public class CameraOperationHelper extends RotationEventListener implements ICam
     @Override
     public void onResume() {
         enableRotation();
-        if (mCamera == null) {
+        if (mCamera == null && mPreview != null) {
             safeOpenCamera();
             setupCameraParameters();
             startPreview();

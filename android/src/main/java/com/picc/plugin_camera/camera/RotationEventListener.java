@@ -5,8 +5,6 @@ import android.util.Log;
 import android.view.OrientationEventListener;
 import android.view.Surface;
 
-import static android.view.OrientationEventListener.ORIENTATION_UNKNOWN;
-
 public abstract class RotationEventListener {
 
     private static final String TAG = "RotationEventListener";
@@ -20,12 +18,15 @@ public abstract class RotationEventListener {
         listener = new OrientationEventListener(context) {
             @Override
             public void onOrientationChanged(int orientation) {
+                if (orientation == -1) {
+                    return;
+                }
                 //转换成顺时针方向
                 int degrees = (360 - orientation) % 360;
                 int rotation = getRotation(degrees);
                 //只在角度变化时回调
                 if (rotation != mCurrentDegrees && rotation != ORIENTATION_UNKNOWN) {
-                    Log.d(TAG, "orientation : " + orientation + "  rotation = " + rotation + " mCurrentDegrees" + mCurrentDegrees);
+                    Log.d(TAG, "orientation : " + orientation + "  rotation = " + rotation + " mCurrentDegrees = " + mCurrentDegrees);
                     onRotationChanged(orientation, rotation, mCurrentDegrees);
                     mCurrentDegrees = rotation;
                 }
@@ -59,17 +60,20 @@ public abstract class RotationEventListener {
      * @return
      */
     private int getRotation(int orientation) {
-        if (orientation > 360 - mThreshold || orientation < mThreshold) { //0度
+        if (orientation > 360 - mThreshold || orientation <= mThreshold) { //0度
             return Surface.ROTATION_0;
-        } else if (orientation > (90 - mThreshold) && orientation < (90 + mThreshold)) { //90度
+        } else if (orientation > (90 - mThreshold) && orientation <= (90 + mThreshold)) { //90度
             return Surface.ROTATION_90;
-        } else if (orientation > 180 - mThreshold && orientation < 180 + mThreshold) { //180度
+        } else if (orientation > 180 - mThreshold && orientation <= 180 + mThreshold) { //180度
             return Surface.ROTATION_180;
-        } else if (orientation > 270 - mThreshold && orientation < 270 + mThreshold) { //270度
-            return Surface.ROTATION_270;
         } else {
-            return ORIENTATION_UNKNOWN;
+            return Surface.ROTATION_270;
         }
+//        else if (orientation > 270 - mThreshold && orientation <= 270 + mThreshold) { //270度
+//            return Surface.ROTATION_270;
+//        } else {
+//            return ORIENTATION_UNKNOWN;
+//        }
     }
 
 

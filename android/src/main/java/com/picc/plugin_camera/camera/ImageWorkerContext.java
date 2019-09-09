@@ -1,5 +1,7 @@
 package com.picc.plugin_camera.camera;
 
+import android.graphics.Bitmap;
+
 import java.io.File;
 
 public interface ImageWorkerContext {
@@ -41,4 +43,5 @@ public interface ImageWorkerContext {
 
     int getDegrees();
 
+    void onThumbnailSaveDone(Bitmap thumbnail, File thumb);
 }

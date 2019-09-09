@@ -6,9 +6,10 @@ buildscript {
         google()
         jcenter()
     }
-
+    ext.objectboxVersion = '2.3.4'
     dependencies {
         classpath 'com.android.tools.build:gradle:3.2.1'
+        classpath "io.objectbox:objectbox-gradle-plugin:$objectboxVersion"
     }
 }
 
@@ -20,6 +21,7 @@ rootProject.allprojects {
 }
 
 apply plugin: 'com.android.library'
+apply plugin: 'io.objectbox' // after applying Android plugin
 
 android {
     compileSdkVersion 28
@@ -34,5 +36,6 @@ android {
 }
 
 dependencies {
-    implementation 'androidx.appcompat:appcompat:1.0.2'
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'com.google.android.material:material:1.1.0-alpha10'
 }

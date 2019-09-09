@@ -1,4 +1,4 @@
-package com.picc.plugin_camera;
+package com.picc.plugin_camera.utils;
 
 import android.content.Context;
 import android.content.res.Configuration;

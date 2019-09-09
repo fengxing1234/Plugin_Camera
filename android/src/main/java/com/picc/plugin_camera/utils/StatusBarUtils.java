@@ -1,4 +1,4 @@
-package com.picc.plugin_camera;
+package com.picc.plugin_camera.utils;
 
 import android.annotation.TargetApi;
 import android.app.Activity;

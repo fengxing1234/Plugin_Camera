@@ -1,4 +1,4 @@
-package com.picc.plugin_camera;
+package com.picc.plugin_camera.utils;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -158,6 +158,48 @@ public class BitmapUtils {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * Bitmap to File
+     *
+     * @param bitmap bitmap
+     * @return file
+     */
+    public static File bitmapToFile(String dstFileName, Bitmap bitmap) {
+        FileOutputStream fos = null;
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        int quality = 100;
+        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, bos);
+        while (bos.toByteArray().length > BUFFER_SIZE) {
+            bos.reset();
+            quality -= 5;
+            bitmap.compress(Bitmap.CompressFormat.JPEG, quality, bos);
+        }
+        File imageFile = new File(dstFileName);
+        try {
+            fos = new FileOutputStream(imageFile);
+            fos.write(bos.toByteArray(), 0, bos.toByteArray().length);
+            fos.flush();
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                bos.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return imageFile;
     }
 
 

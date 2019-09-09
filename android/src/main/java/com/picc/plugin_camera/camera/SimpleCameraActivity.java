@@ -3,8 +3,13 @@ package com.picc.plugin_camera.camera;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.hardware.Camera;
 import android.os.Bundle;
@@ -15,18 +20,26 @@ import android.view.Window;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
-import com.picc.plugin_camera.CircularImageView;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.picc.plugin_camera.R;
+import com.picc.plugin_camera.picture.Gallery;
+import com.picc.plugin_camera.picture.PictureManager;
+import com.picc.plugin_camera.picture.type.OfflineType;
+import com.picc.plugin_camera.widgets.CircleImageView;
+
+import java.io.File;
 
 
 public class SimpleCameraActivity extends Activity {
 
     private static final String TAG = SimpleCameraActivity.class.getSimpleName();
     private static final int PERMISSIONS_REQUEST_CODE_CAMERA = 0x10;
+    public static final String PICTURE_TYPE = "Picture_Type";
 
     private CameraOperationHelper mCameraHelper;
     private FocusCameraView focusView;
@@ -34,9 +47,18 @@ public class SimpleCameraActivity extends Activity {
     private ImageView ivSwitchCamera;
     private ImageView ivFlushMode;
     private ImageView ivImportImage;
-    private CircularImageView ivThumbnail;
+    private CircleImageView ivThumbnail;
     private ImageButton ivTakePicture;
     private ImageButton ivPictureType;
+    private String type;
+    private Gallery mGalley;
+    private boolean isOffline;
+
+    public static void startSimpleCameraActivity(Context context, String type) {
+        Intent intent = new Intent(context, SimpleCameraActivity.class);
+        intent.putExtra(PICTURE_TYPE, type);
+        context.startActivity(intent);
+    }
 
 
     @Override
@@ -45,10 +67,24 @@ public class SimpleCameraActivity extends Activity {
         //去除标题栏
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         setContentView(R.layout.camera_activity);
+        mCameraHelper = CameraOperationHelper.getInstance(this);
+        initData();
         initView();
         if (checkPermission()) {
             initCamera();
         }
+    }
+
+    private void initData() {
+        Intent intent = getIntent();
+        if (intent != null) {
+            type = intent.getStringExtra(PICTURE_TYPE);
+            if (OfflineType.OFFLINE_GALLERY.equals(type)) {
+                isOffline = true;
+            }
+        }
+        mGalley = new Gallery(this, PictureManager.getInstance().findPictureType(type));
+
     }
 
     private void initCamera() {
@@ -56,7 +92,6 @@ public class SimpleCameraActivity extends Activity {
         FrameLayout previewContainer = (FrameLayout) findViewById(R.id.camera_preview);
         focusView = (FocusCameraView) findViewById(R.id.over_camera_view);
         previewContainer.addView(preview);
-        mCameraHelper = CameraOperationHelper.getInstance(this);
         mCameraHelper.setICameraCallback(new CameraOperationHelper.ICameraCallback() {
             @Override
             public void onCameraReady() {
@@ -73,6 +108,27 @@ public class SimpleCameraActivity extends Activity {
                 ivThumbnail.animate().rotation(degrees).start();
                 ivTakePicture.animate().rotation(degrees).start();
                 ivPictureType.animate().rotation(degrees).start();
+            }
+
+            @Override
+            public File[] generateNewImageFile() {
+                String imgPath;
+                if (isOffline) {
+                    imgPath = "offLineCamera";
+                } else {
+                    imgPath = PictureManager.getInstance().getRootCase().getRegisterNo();
+                }
+                return mGalley.generateNewImageFile(imgPath);
+            }
+
+            @Override
+            public void onThumbnailSaveDone(final Bitmap thumbnail, File thumb) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        ivThumbnail.setBitmap(thumbnail);
+                    }
+                });
             }
         });
         mCameraHelper.init(preview);
@@ -110,7 +166,7 @@ public class SimpleCameraActivity extends Activity {
         ivImportImage.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                showBottomSheetDialog();
             }
         });
         ivThumbnail.setOnClickListener(new View.OnClickListener() {
@@ -171,6 +227,44 @@ public class SimpleCameraActivity extends Activity {
         super.onPause();
         Log.d(TAG, "onPause: ");
         mCameraHelper.onPause();
+    }
+
+    private void showBottomSheetDialog() {
+        final BottomSheetDialog bottomSheet = new BottomSheetDialog(this);//实例化BottomSheetDialog
+        bottomSheet.setCancelable(true);//设置点击外部是否可以取消
+        bottomSheet.setContentView(R.layout.camera_select_picture_source);//设置对框框中的布局
+        bottomSheet.getWindow().findViewById(R.id.design_bottom_sheet).setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+        bottomSheet.findViewById(R.id.tv_source_offline).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(SimpleCameraActivity.this, "离线相册", Toast.LENGTH_SHORT).show();
+                bottomSheet.cancel();
+            }
+        });
+
+        bottomSheet.findViewById(R.id.tv_source_mobile).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(SimpleCameraActivity.this, "手机相册", Toast.LENGTH_SHORT).show();
+                bottomSheet.cancel();
+            }
+        });
+        bottomSheet.findViewById(R.id.tv_source_case_photo).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Toast.makeText(SimpleCameraActivity.this, "案件相册", Toast.LENGTH_SHORT).show();
+                bottomSheet.cancel();
+            }
+        });
+
+        bottomSheet.findViewById(R.id.tv_cancel).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                bottomSheet.cancel();
+            }
+        });
+        bottomSheet.show();
     }
 
     @Override

@@ -1,9 +1,10 @@
 package com.picc.plugin_camera;
 
 import android.app.Activity;
-import android.content.Intent;
 
 import com.picc.plugin_camera.camera.SimpleCameraActivity;
+import com.picc.plugin_camera.picture.PictureManager;
+import com.picc.plugin_camera.picture.type.CaseRootType;
 
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
@@ -27,6 +28,7 @@ public class PluginCameraPlugin implements MethodCallHandler {
      * Plugin registration.
      */
     public static void registerWith(Registrar registrar) {
+        InitManager.getInstance().init(registrar.context());
         final MethodChannel channel = new MethodChannel(registrar.messenger(), "plugin_camera");
         channel.setMethodCallHandler(new PluginCameraPlugin(registrar.activity()));
     }
@@ -48,7 +50,7 @@ public class PluginCameraPlugin implements MethodCallHandler {
     }
 
     public void startCameraActivity() {
-        Intent intent = new Intent(mActivity, SimpleCameraActivity.class);
-        mActivity.startActivity(intent);
+        PictureManager.getInstance().setTask("123456", "RDZA778899", "1");
+        SimpleCameraActivity.startSimpleCameraActivity(mActivity, CaseRootType.SURVEY_NAME);
     }
 }
