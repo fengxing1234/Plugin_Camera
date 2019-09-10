@@ -20,19 +20,26 @@ import android.view.Window;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.picc.plugin_camera.R;
 import com.picc.plugin_camera.picture.Gallery;
 import com.picc.plugin_camera.picture.PictureManager;
 import com.picc.plugin_camera.picture.type.OfflineType;
+import com.picc.plugin_camera.utils.FakeBoldSpan;
+import com.picc.plugin_camera.utils.Spanny;
 import com.picc.plugin_camera.widgets.CircleImageView;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 
 public class SimpleCameraActivity extends Activity {
@@ -184,7 +191,7 @@ public class SimpleCameraActivity extends Activity {
         ivPictureType.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-
+                showSelectPictureType();
             }
         });
     }
@@ -229,12 +236,46 @@ public class SimpleCameraActivity extends Activity {
         mCameraHelper.onPause();
     }
 
+    private void showSelectPictureType() {
+        final BottomSheetDialog bottomSheet = new BottomSheetDialog(this);//实例化BottomSheetDialog
+        bottomSheet.setCancelable(true);//设置点击外部是否可以取消
+        bottomSheet.setContentView(R.layout.camera_select_picture_type);//设置对框框中的布局
+        bottomSheet.getWindow().findViewById(R.id.design_bottom_sheet).setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        TextView tvTitle = bottomSheet.findViewById(R.id.tv_title);
+        tvTitle.setText(new Spanny().append("选择照片类型", new FakeBoldSpan(getResources().getColor(R.color.text_color_0))));
+        RecyclerView recyclerView = bottomSheet.findViewById(R.id.recycle_view);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setHasFixedSize(true);
+        recyclerView.setAdapter(new SelectPictureTypeAdapter(getList()));
+        bottomSheet.show();
+    }
+
+    public List<SelectPictureTypeData> getList() {
+        List<SelectPictureTypeData> mData = new ArrayList<>();
+        mData.add(getTestData("简易赔案协议书(2/10)", true, true));
+        mData.add(getTestData("被保险人身份证明、房屋产权证或租赁合同(2/10)", false, true));
+        mData.add(getTestData("银行账号(2/10)", false, true));
+        mData.add(getTestData("保险单、保险凭证(2/10)", false, true));
+        mData.add(getTestData("相关票据、事故证明(2/10)", false, true));
+        mData.add(getTestData("其他(2/10)", false, false));
+        return mData;
+    }
+
+    public SelectPictureTypeData getTestData(String type, boolean isSelected, boolean isMust) {
+        SelectPictureTypeData data = new SelectPictureTypeData();
+        data.isSelected = isSelected;
+        data.pictureType = type;
+        data.currentCount = 2;
+        data.maxCount = 10;
+        data.isMust = isMust;
+        return data;
+    }
+
     private void showBottomSheetDialog() {
         final BottomSheetDialog bottomSheet = new BottomSheetDialog(this);//实例化BottomSheetDialog
         bottomSheet.setCancelable(true);//设置点击外部是否可以取消
         bottomSheet.setContentView(R.layout.camera_select_picture_source);//设置对框框中的布局
         bottomSheet.getWindow().findViewById(R.id.design_bottom_sheet).setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-
         bottomSheet.findViewById(R.id.tv_source_offline).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

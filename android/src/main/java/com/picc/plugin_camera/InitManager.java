@@ -12,6 +12,7 @@ public class InitManager {
 
     private BoxStore boxStore;
     private PictureManager pictureManager;
+    private Context mContext;
 
     private InitManager() {
 
@@ -31,11 +32,14 @@ public class InitManager {
     }
 
     public void init(Context context) {
-        boxStore = MyObjectBox.builder().androidContext(context).build();
+        this.mContext = context;
         pictureManager = PictureManager.initManager(context);
     }
 
     public BoxStore getBoxStore() {
+        if (boxStore == null) {
+            boxStore = MyObjectBox.builder().androidContext(mContext).build();
+        }
         return boxStore;
     }
 
